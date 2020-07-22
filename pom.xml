@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.neotys.splunk</groupId>
+    <artifactId>SplunkSynchroniser</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <properties>
+        <java.version>1.8</java.version>
+        <tag>0.1</tag>
+        <dockerimage>docker.io/hrexed/neoload_splunksync</dockerimage>
+        <NL_WEB_HOST>neoload.saas.com</NL_WEB_HOST>
+        <NL_API_HOST>neoload-api.saas.com</NL_API_HOST>
+        <NL_API_TOKEN>YOUTOKEN</NL_API_TOKEN>
+        <port>8080</port>
+        <SplunkHost>localhost</SplunkHost>
+        <Splunkport>9800</Splunkport>
+        <SplunkHECMETRICToken>neoloadData</SplunkHECMETRICToken>
+        <SplunkHECEVENTToken>neoloadData</SplunkHECEVENTToken>
+        <SPLUNKHECSSL>false</SPLUNKHECSSL>
+        <login>DEBUG</login>
+
+    </properties>
+
+
+    <dependencies>
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-core</artifactId>
+            <version>3.8.3</version>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/org.influxdb/influxdb-java -->
+
+
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-web</artifactId>
+            <version>3.8.3</version>
+        </dependency>
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-web-client</artifactId>
+            <version>3.8.3</version>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.12</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.neotys.ascode</groupId>
+            <artifactId>swagger-java-client</artifactId>
+            <version>1.0.11</version>
+        </dependency>
+    </dependencies>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>com.google.cloud.tools</groupId>
+                <artifactId>jib-maven-plugin</artifactId>
+                <version>1.4.0</version>
+                <configuration>
+                    <from>
+                        <image>gcr.io/distroless/java:8</image>
+                    </from>
+                    <to>
+                        <image>${dockerimage}</image>
+
+                        <tags>
+                            <tag>${tag}</tag>
+                            <tag>latest</tag>
+                        </tags>
+                    </to>
+                    <allowInsecureRegistries>true</allowInsecureRegistries>
+                    <container>
+                        <ports>
+                            <port>${port}</port>
+                        </ports>
+                        <environment>
+                            <logging-level>${login}</logging-level>
+                            <NL_WEB_HOST>${NL_WEB_HOST}</NL_WEB_HOST>
+                            <NL_API_HOST>${NL_API_HOST}</NL_API_HOST>
+                            <NL_API_TOKEN>${NL_API_TOKEN}</NL_API_TOKEN>
+                            <SPLUNK_HOST>${SplunkHost}</SPLUNK_HOST>
+                            <SPLUNK_HEC_METRIC_TOKEN>${SplunkHECMETRICToken}</SPLUNK_HEC_METRIC_TOKEN>
+                            <SPLUNK_HEC_EVENT_TOKEN>${SplunkHECEVENTToken}</SPLUNK_HEC_EVENT_TOKEN>
+                            <SPLUNK_PORT>${Splunkport}</SPLUNK_PORT>
+                            <SPLUNK_HEC_SSL>false</SPLUNK_HEC_SSL>
+                            <PORT>${port}</PORT>
+                        </environment>
+                    </container>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>8</source>
+                    <target>8</target>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
