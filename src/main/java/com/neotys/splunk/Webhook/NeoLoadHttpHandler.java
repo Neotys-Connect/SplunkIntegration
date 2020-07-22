@@ -131,20 +131,19 @@ public class NeoLoadHttpHandler {
                                     //-----------------------
                                     offset_elements.set(point.getFrom());
                                 });
-                                Metrics elementpointsMetrics=new Metrics(neoLoadListOfElementPoints);
-                                //----send the data
-                                Future<JsonObject> jsonObjectFuture= httpclientmetric.sendJsonObject(elementpointsMetrics.toJsonArray());
-                                jsonObjectFuture.setHandler(jsonObjectAsyncResult -> {
-                                    if(jsonObjectAsyncResult.succeeded())
-                                    {
-                                        logger.error("Data Received : "+jsonObjectAsyncResult.result().toString());
+                                if(neoLoadListOfElementPoints.getNeoLoadElementsPoints().size()>0) {
+                                    Metrics elementpointsMetrics = new Metrics(neoLoadListOfElementPoints);
+                                    //----send the data
+                                    Future<JsonObject> jsonObjectFuture = httpclientmetric.sendJsonObject(elementpointsMetrics.toJsonArray());
+                                    jsonObjectFuture.setHandler(jsonObjectAsyncResult -> {
+                                        if (jsonObjectAsyncResult.succeeded()) {
+                                            logger.error("Data Received : " + jsonObjectAsyncResult.result().toString());
 
-                                    }
-                                    else
-                                    {
-                                        logger.error("Issue to receive response",jsonObjectAsyncResult.cause());
-                                    }
-                                });
+                                        } else {
+                                            logger.error("Issue to receive response", jsonObjectAsyncResult.cause());
+                                        }
+                                    });
+                                }
                                 //----------------
 
                             } catch (ApiException e) {
@@ -195,20 +194,20 @@ public class NeoLoadHttpHandler {
                             //-----------------------
                             offset_elements.set(point.getFrom());
                         });
-                   Metrics elementpointsMetrics=new Metrics(neoLoadListOfElementPointsRequest);
-                   //----send the data
-                   Future<JsonObject> jsonObjectFuture= httpclientmetric.sendJsonObject(elementpointsMetrics.toJsonArray());
-                   jsonObjectFuture.setHandler(jsonObjectAsyncResult -> {
-                       if(jsonObjectAsyncResult.succeeded())
-                       {
-                           logger.error("Data Received : "+jsonObjectAsyncResult.result().toString());
 
-                       }
-                       else
-                       {
-                           logger.error("Issue to receive response",jsonObjectAsyncResult.cause());
-                       }
-                   });
+                    if(neoLoadListOfElementPointsRequest.getNeoLoadElementsPoints().size()>1) {
+                        Metrics elementpointsMetrics = new Metrics(neoLoadListOfElementPointsRequest);
+                        //----send the data
+                        Future<JsonObject> jsonObjectFuture = httpclientmetric.sendJsonObject(elementpointsMetrics.toJsonArray());
+                        jsonObjectFuture.setHandler(jsonObjectAsyncResult -> {
+                            if (jsonObjectAsyncResult.succeeded()) {
+                                logger.error("Data Received : " + jsonObjectAsyncResult.result().toString());
+
+                            } else {
+                                logger.error("Issue to receive response", jsonObjectAsyncResult.cause());
+                            }
+                        });
+                    }
                    //-----
 
                } catch (ApiException e) {
@@ -254,20 +253,23 @@ public class NeoLoadHttpHandler {
                             offset_monitor.set(point.getFrom());
                             //-------------------------------
                         });
-                        Metrics elementpointsmonitoringMetrics=new Metrics(neoLoadMonitoringListOfPoints);
-                        //---send data
-                        Future<JsonObject> jsonObjectFuture= httpclientmetric.sendJsonObject(elementpointsmonitoringMetrics.toJsonArray());
-                        jsonObjectFuture.setHandler(jsonObjectAsyncResult -> {
-                            if(jsonObjectAsyncResult.succeeded())
-                            {
-                                logger.error("Data Received : "+jsonObjectAsyncResult.result().toString());
+                        if(neoLoadMonitoringListOfPoints.getNeoLoadMonitoringPointsList().size()>0)
+                        {
+                            Metrics elementpointsmonitoringMetrics=new Metrics(neoLoadMonitoringListOfPoints);
+                            //---send data
+                            Future<JsonObject> jsonObjectFuture= httpclientmetric.sendJsonObject(elementpointsmonitoringMetrics.toJsonArray());
+                            jsonObjectFuture.setHandler(jsonObjectAsyncResult -> {
+                                if(jsonObjectAsyncResult.succeeded())
+                                {
+                                    logger.error("Data Received : "+jsonObjectAsyncResult.result().toString());
 
-                            }
-                            else
-                            {
-                                logger.error("Issue to receive response",jsonObjectAsyncResult.cause());
-                            }
-                        });
+                                }
+                                else
+                                {
+                                    logger.error("Issue to receive response",jsonObjectAsyncResult.cause());
+                                }
+                            });
+                        }
                         //----------
 
                     }
@@ -346,21 +348,20 @@ public class NeoLoadHttpHandler {
 
                         //----------------------------------
                     });
-                    Events splunkevent=new Events(neoLoadListEvents);
-                    //---send the events
-                    //----send the data----
-                    Future<JsonObject> jsonObjectFuture= httpclientevent.sendJsonObject(splunkevent.toJsonArray());
-                    jsonObjectFuture.setHandler(jsonObjectAsyncResult -> {
-                        if(jsonObjectAsyncResult.succeeded())
-                        {
-                            logger.error("Data Received : "+jsonObjectAsyncResult.result().toString());
+                    if(neoLoadListEvents.getNeoLoadEventsList().size()>0) {
+                        Events splunkevent = new Events(neoLoadListEvents);
+                        //---send the events
+                        //----send the data----
+                        Future<JsonObject> jsonObjectFuture = httpclientevent.sendJsonObject(splunkevent.toJsonArray());
+                        jsonObjectFuture.setHandler(jsonObjectAsyncResult -> {
+                            if (jsonObjectAsyncResult.succeeded()) {
+                                logger.error("Data Received : " + jsonObjectAsyncResult.result().toString());
 
-                        }
-                        else
-                        {
-                            logger.error("Issue to receive response",jsonObjectAsyncResult.cause());
-                        }
-                    });
+                            } else {
+                                logger.error("Issue to receive response", jsonObjectAsyncResult.cause());
+                            }
+                        });
+                    }
                     //-----------------
                 }
                 catch(ApiException e)
@@ -421,21 +422,20 @@ public class NeoLoadHttpHandler {
                                 }
                             }
                         });
-                        Metrics ElementValuesTRansaction=new Metrics(neoLoadListOfElementsValues);
+                        if(neoLoadListOfElementsValues.getNeoLoadListOfElementsValuesList().size()>0) {
+                            Metrics ElementValuesTRansaction = new Metrics(neoLoadListOfElementsValues);
 
-                        //----send the data----
-                        Future<JsonObject> jsonObjectFuture= httpclientmetric.sendJsonObject(ElementValuesTRansaction.toJsonArray());
-                        jsonObjectFuture.setHandler(jsonObjectAsyncResult -> {
-                            if(jsonObjectAsyncResult.succeeded())
-                            {
-                                logger.error("Data Received : "+jsonObjectAsyncResult.result().toString());
+                            //----send the data----
+                            Future<JsonObject> jsonObjectFuture = httpclientmetric.sendJsonObject(ElementValuesTRansaction.toJsonArray());
+                            jsonObjectFuture.setHandler(jsonObjectAsyncResult -> {
+                                if (jsonObjectAsyncResult.succeeded()) {
+                                    logger.error("Data Received : " + jsonObjectAsyncResult.result().toString());
 
-                            }
-                            else
-                            {
-                                logger.error("Issue to receive response",jsonObjectAsyncResult.cause());
-                            }
-                        });
+                                } else {
+                                    logger.error("Issue to receive response", jsonObjectAsyncResult.cause());
+                                }
+                            });
+                        }
 
                     } catch (ApiException e) {
                         if(e.getCode()==NL_API_LIMITE_CODE)
@@ -477,21 +477,20 @@ public class NeoLoadHttpHandler {
                         }
                     }
                 });
-                Metrics ElementValuesMonitoring=new Metrics(neoLoadMonitoringListOfValues);
+                if(neoLoadMonitoringListOfValues.getNeoLoadMonitoringValuesList().size()>0) {
+                    Metrics ElementValuesMonitoring = new Metrics(neoLoadMonitoringListOfValues);
 
-                //----send the data
-                Future<JsonObject> jsonObjectFuture= httpclientmetric.sendJsonObject(ElementValuesMonitoring.toJsonArray());
-                jsonObjectFuture.setHandler(jsonObjectAsyncResult -> {
-                    if(jsonObjectAsyncResult.succeeded())
-                    {
-                        logger.error("Data Received : "+jsonObjectAsyncResult.result().toString());
+                    //----send the data
+                    Future<JsonObject> jsonObjectFuture = httpclientmetric.sendJsonObject(ElementValuesMonitoring.toJsonArray());
+                    jsonObjectFuture.setHandler(jsonObjectAsyncResult -> {
+                        if (jsonObjectAsyncResult.succeeded()) {
+                            logger.error("Data Received : " + jsonObjectAsyncResult.result().toString());
 
-                    }
-                    else
-                    {
-                        logger.error("Issue to receive response",jsonObjectAsyncResult.cause());
-                    }
-                });
+                        } else {
+                            logger.error("Issue to receive response", jsonObjectAsyncResult.cause());
+                        }
+                    });
+                }
                 //-----
 
 
