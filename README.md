@@ -7,9 +7,9 @@ This project has one container :
 
 ## WebHook Handler : neoload_splunksync
 
-###Configuration
+### Configuration
 
-####Step 1 : Enable HTTP Event Collector ( [Read more](https://docs.splunk.com/Documentation/Splunk/latest/Data/UsetheHTTPEventCollector))
+#### Step 1 : Enable HTTP Event Collector ( [Read more](https://docs.splunk.com/Documentation/Splunk/latest/Data/UsetheHTTPEventCollector))
 Before you can use Event Collector to receive events through HTTP, you must enable it. For Splunk Enterprise, enable HEC through the Global Settings dialog box.
 * Click Settings > Data Inputs.
 * Click HTTP Event Collector.
@@ -22,12 +22,12 @@ Before you can use Event Collector to receive events through HTTP, you must enab
 * (Optional) To have HEC listen and communicate over HTTPS rather than HTTP, click the Enable SSL checkbox.
 * Click Save.
 
-####Step 2 Create a metric index in Splunk ([Read More](https://docs.splunk.com/Documentation/Splunk/8.0.5/Indexer/Setupmultipleindexes))
+#### Step 2 Create a metric index in Splunk ([Read More](https://docs.splunk.com/Documentation/Splunk/8.0.5/Indexer/Setupmultipleindexes))
 * In Splunk Web, navigate to Settings > Indexes and click New.
 * click Metrics.
 * Click Save
 
-####Step 3 : Create a HTTP Collector in Splunk to collect NeoLaod Events
+#### Step 3 : Create a HTTP Collector in Splunk to collect NeoLaod Events
 In Splunk WEB
 * Click Settings > Add Data.
 * Click monitor.
@@ -40,12 +40,12 @@ In Splunk WEB
 
 Copy the token value that Splunk Web displays and paste it into another document to configure the docker compose.
 
-####Step 4 Create a event index in Splunk ([Read More](https://docs.splunk.com/Documentation/Splunk/8.0.5/Indexer/Setupmultipleindexes))
+#### Step 4 Create a event index in Splunk ([Read More](https://docs.splunk.com/Documentation/Splunk/8.0.5/Indexer/Setupmultipleindexes))
 * In Splunk Web, navigate to Settings > Indexes and click New.
 * click Event.
 * Click Save
 
-####Step 5 : Create a HTTP Collector in Splunk to collect NeoLaod Events
+#### Step 5 : Create a HTTP Collector in Splunk to collect NeoLaod Events
 In Splunk WEB
 * Click Settings > Add Data.
 * Click monitor.
@@ -59,7 +59,7 @@ In Splunk WEB
 Copy the token value that Splunk Web displays and paste it into another document to configure the docker compose.
 
 
-####Step 6: Deploy the webHookHandler
+#### Step 6: Deploy the webHookHandler
 
 The webhook handler is a web service package in a container : `hrexed/neoload_splunksync`
 The container will required different to define ther right environement variables
@@ -92,7 +92,7 @@ the deployment will be done by running the following command :
 ```bash
 docker-compose -f <docker file> up -d
 ```
-#### Step4 : Configure the WebHook in your NeoLoad Web Account to send a notification to your WebHook service
+#### Step 7 : Configure the WebHook in your NeoLoad Web Account to send a notification to your WebHook service
 
 The webhookhandler service is listenning to 2 disctinct endpoints :
 * `/Health` : Get request build to check if the webhookhandler is up
