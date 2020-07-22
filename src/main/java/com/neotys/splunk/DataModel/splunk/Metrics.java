@@ -217,7 +217,7 @@ public class Metrics {
         {
             io.vertx.core.json.JsonArray array=new JsonArray();
             metricList.stream().forEach(metric -> {
-                array.add(metric);
+                array.add(metric.toJsonObjec());
 
             });
             return array.toString();

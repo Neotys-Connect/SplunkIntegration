@@ -31,7 +31,7 @@ public class Events {
         {
             io.vertx.core.json.JsonArray array=new JsonArray();
             eventList.stream().forEach(metric -> {
-                array.add(metric);
+                array.add(metric.toJsonObjec());
 
             });
             return array.toString();
