@@ -1,6 +1,7 @@
 package com.neotys.splunk.DataModel.splunk;
 
 import com.neotys.splunk.DataModel.NeoLoadEvents;
+import com.neotys.splunk.Logger.NeoLoadLogger;
 import io.vertx.core.json.JsonObject;
 
 import java.util.HashMap;
@@ -8,6 +9,8 @@ import java.util.HashMap;
 import static com.neotys.splunk.conf.Constants.*;
 
 public class Event {
+
+
     //{
     //
     //	"time": 1595345018.000,

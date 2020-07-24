@@ -1,9 +1,12 @@
 package com.neotys.splunk.DataModel.splunk;
 
 import com.google.gson.JsonElement;
+import com.neotys.splunk.Logger.NeoLoadLogger;
 import io.vertx.core.json.JsonObject;
 
 public class Metric {
+
+
     //{
     //	"time": 1594311946.000,
     //	"source":"disk",
@@ -38,6 +41,12 @@ public class Metric {
         this.host = host;
     }
 
+    public Metric(Metric reference)
+    {
+        this.time=reference.getTime();
+        this.source=reference.getSource();
+        this.host=reference.getHost();
+    }
     public Long getTime() {
         return time;
     }

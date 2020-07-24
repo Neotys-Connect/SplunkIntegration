@@ -30,7 +30,7 @@ public class Httpclient {
     private String apiPath;
     private HashMap<String,String> headers;
 
-    public Httpclient(Vertx vertx, String serverhost, String serverport, String cloudapipath, String token, boolean ssl) {
+    public Httpclient(Vertx vertx, String serverhost, String serverport, String cloudapipath, String token, boolean ssl,String testid) {
         this.vertx=vertx;
         this.ssl=ssl;
         this.serverhost=serverhost;
@@ -39,9 +39,11 @@ public class Httpclient {
         this.token=token;
         client= WebClient.create(vertx,new WebClientOptions().setSsl(ssl).setLogActivity(true));
         logger=new NeoLoadLogger(this.getClass().getName());
-
+        logger.setTestid(testid);
         headers=new HashMap<>();
         headers.put(SPLUNK_AUTH_HEADER,SPLUNK_TOKEN_PREFIX+" "+ token);
+        headers.put("Content-Type","application/json");
+     //   logger.debug("HTTP CLIENT Settings "+ serverhost +" port " +serverport+" path "+ apiPath+" token"+ token);
 
     }
 
@@ -90,6 +92,7 @@ public class Httpclient {
                     {
                         logger.debug("Request sent successfuly - uri :"+apiPath+" payload :"+object.toString());
                         logger.debug("Received the following response :"+ handler.result().bodyAsString());
+                        client.close();
                         future.complete(handler.result().bodyAsString());
 
                     }
@@ -98,10 +101,12 @@ public class Httpclient {
                         logger.error("Issue to receive response ");
                         if(handler.result()!=null) {
                             logger.error("Response code :" + handler.result().statusCode() + " and response  " + handler.result().bodyAsString());
+                            client.close();
                             future.fail("Response code :" + handler.result().statusCode() + " and response  " + handler.result().bodyAsString());
                         }
                         else {
                             logger.error("no Response ", handler.cause());
+                            client.close();
                             future.fail("no Response " + handler.cause().getMessage());
 
                         }
@@ -139,7 +144,7 @@ public class Httpclient {
 
         header.forEach(stringStringEntry -> {
 
-            logger.debug("Hader "+ stringStringEntry.getKey()+" value "+ stringStringEntry.getValue());
+            logger.debug("Header "+ stringStringEntry.getKey()+" value "+ stringStringEntry.getValue());
         });
 
         request.putHeaders(header)
@@ -149,12 +154,14 @@ public class Httpclient {
                         if(handler.result().statusCode()>=200 && handler.result().statusCode()<400) {
                             logger.debug("Request sent successfuly - uri :" + uri);
                             logger.debug("Received the following response :" + handler.result().toString());
+                            client.close();
                             future.complete(handler.result().bodyAsJsonObject());
 
                         }
                         else
                         {
                             logger.error("Response code :" + handler.result().statusCode() + " and response  " + handler.result().bodyAsString());
+                            client.close();
                             future.fail("Response code :" + handler.result().statusCode() + " and response  " + handler.result().bodyAsString());
 
                         }
@@ -164,11 +171,13 @@ public class Httpclient {
                         logger.error("Issue to get response ");
                         if(handler.result()!=null) {
                             logger.error("Response code :" + handler.result().statusCode() + " and response  " + handler.result().bodyAsString());
+                            client.close();
                             future.fail("Response code :" + handler.result().statusCode() + " and response  " + handler.result().bodyAsString());
 
                         }
                         else {
                             logger.error("no Response ", handler.cause());
+                            client.close();
                             future.fail("no Response " + handler.cause().getMessage());
 
                         }
@@ -180,40 +189,43 @@ public class Httpclient {
 
     }
 
-    public Future<JsonObject> sendJsonObject(String object)
+    public void sendJsonObject(String object, Future<JsonObject> future)
     {
 
-        Future<JsonObject> future= Future.future();
+
         HttpRequest<Buffer> request = client.post(Integer.parseInt(serverport),serverhost,apiPath);
+     //   logger.debug("Request to send  - uri :"+apiPath+" payload :"+object);
 
         MultiMap header=((HttpRequest) request).headers();
         header.addAll(headers);
         request.putHeaders(header)
-                .expect(ResponsePredicate.JSON)
-                .expect(ResponsePredicate.status(200,300))
-                .sendJson(object,handler->{
+                .sendBuffer(Buffer.buffer(object),handler->{
                     if(handler.succeeded())
                     {
-                        logger.debug("Request sent successfuly - uri :"+apiPath+" payload :"+object.toString());
+                        logger.debug("Received the following response :"+ handler.result().bodyAsString()+ " code "+String.valueOf(handler.result().statusCode()));
+                        client.close();
                         future.complete(handler.result().bodyAsJsonObject());
-                        logger.debug("Received the following response :"+ handler.result().toString());
+
                     }
                     else
                     {
                         logger.error("Issue to get response ");
                         if(handler.result()!=null) {
-                            future.fail("Response code :" + handler.result().statusCode() + " and response  " + handler.result().bodyAsString());
                             logger.error("Response code :" + handler.result().statusCode() + " and response  " + handler.result().bodyAsString());
-                        }
+                            client.close();
+                            future.fail("Response code :" + handler.result().statusCode() + " and response  " + handler.result().bodyAsString());
+                         }
                         else {
-                            future.fail("no Response " + handler.cause().getMessage());
                             logger.error("no Response ", handler.cause());
+                            client.close();
+                            future.fail("no Response " + handler.cause().getMessage());
+
                         }
 
                     }
 
                 });
 
-        return future;
+
     }
 }
