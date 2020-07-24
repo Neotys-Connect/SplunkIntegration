@@ -240,7 +240,7 @@ public class NeoLoadHttpHandler {
                             errorStrings.add("Error parsing the element -" + e.getMessage());
                         }
                     }
-               /*try{
+               try{
 
                 //----query the coutners$
                 NeoLoadMonitoringListOfPoints neoLoadMonitoringListOfPoints=new NeoLoadMonitoringListOfPoints();
@@ -331,7 +331,7 @@ public class NeoLoadHttpHandler {
                         errorStrings.add("unable to qery counter " + e.getMessage());
                     }
 
-                }*/
+                }
 
 
 

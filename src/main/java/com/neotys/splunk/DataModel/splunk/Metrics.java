@@ -109,24 +109,24 @@ public class Metrics {
     {
         List<Metric> metricListpoints=new ArrayList<>();
        //----element per second
-        metricListpoints.add(getGeneratedMetric(standardFileds,points.getPath()+"."+ELEMENTPERSECOND,points.getElementPerSecond(),reference));
+        metricListpoints.add(getGeneratedMetric(standardFileds,VALUES+points.getPath()+"."+ELEMENTPERSECOND,points.getElementPerSecond(),reference));
         //---avg
-        metricListpoints.add(getGeneratedMetric(standardFileds,points.getPath()+"."+AVG,points.getAvgDuration(),reference));
+        metricListpoints.add(getGeneratedMetric(standardFileds,VALUES+points.getPath()+"."+AVG,points.getAvgDuration(),reference));
         //---avg TTFB
-        metricListpoints.add(getGeneratedMetric(standardFileds,points.getPath()+"."+AVG_TTFB,points.getAvgTTFB(),reference));
+        metricListpoints.add(getGeneratedMetric(standardFileds,VALUES+points.getPath()+"."+AVG_TTFB,points.getAvgTTFB(),reference));
         //---error rate
-        metricListpoints.add(getGeneratedMetric(standardFileds,points.getPath()+"."+DOWNLOADEDBYTESPERSECOND,points.getDownloadedBytesPerSecond(),reference));
+        metricListpoints.add(getGeneratedMetric(standardFileds,VALUES+points.getPath()+"."+DOWNLOADEDBYTESPERSECOND,points.getDownloadedBytesPerSecond(),reference));
         //---error /s
-        metricListpoints.add(getGeneratedMetric(standardFileds,points.getPath()+"."+FAILUREPERSECOND,points.getFailurePerSecond(),reference));
+        metricListpoints.add(getGeneratedMetric(standardFileds,VALUES+points.getPath()+"."+FAILUREPERSECOND,points.getFailurePerSecond(),reference));
 
         //---MAX
-        metricListpoints.add(getGeneratedMetric(standardFileds,points.getPath()+"."+FAILURERATE,points.getFailureRate(),reference));
+        metricListpoints.add(getGeneratedMetric(standardFileds,VALUES+points.getPath()+"."+FAILURERATE,points.getFailureRate(),reference));
 
         if(points.getType().equalsIgnoreCase("TRANSACTION")) {
-            metricListpoints.add(getGeneratedMetric(standardFileds,points.getPath()+"."+PERCENTILE50,points.getPercentile50(),reference));
-            metricListpoints.add(getGeneratedMetric(standardFileds,points.getPath()+"."+PERCENTILE90,points.getPercentile90(),reference));
-            metricListpoints.add(getGeneratedMetric(standardFileds,points.getPath()+"."+PERCENTILE95,points.getPercentile95(),reference));
-            metricListpoints.add(getGeneratedMetric(standardFileds,points.getPath()+"."+PERCENTILE99,points.getPercentile99(),reference));
+            metricListpoints.add(getGeneratedMetric(standardFileds,VALUES+points.getPath()+"."+PERCENTILE50,points.getPercentile50(),reference));
+            metricListpoints.add(getGeneratedMetric(standardFileds,VALUES+points.getPath()+"."+PERCENTILE90,points.getPercentile90(),reference));
+            metricListpoints.add(getGeneratedMetric(standardFileds,VALUES+points.getPath()+"."+PERCENTILE95,points.getPercentile95(),reference));
+            metricListpoints.add(getGeneratedMetric(standardFileds,VALUES+points.getPath()+"."+PERCENTILE99,points.getPercentile99(),reference));
         }
 
         return metricListpoints;
@@ -144,7 +144,7 @@ public class Metrics {
             standartfields.put(TEST_NAME,values.getTestname());
             standartfields.put(AUTHOR,values.getAuthor());
             standartfields.put(SCENARIO,values.getScenario());
-            Fields fields=new Fields(values.getPath()+"."+AVG,values.getAvg());
+            Fields fields=new Fields(VALUES+values.getPath()+"."+AVG,values.getAvg());
             fields.setFields(standartfields);
 
             metric.setFields(fields);
