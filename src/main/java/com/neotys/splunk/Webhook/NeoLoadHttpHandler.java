@@ -91,13 +91,17 @@ public class NeoLoadHttpHandler {
                 if (syncResultTimerAsyncResult.succeeded())
                 {
                     SyncResultTimer syncResultTimer1 = syncResultTimerAsyncResult.result();
-                    if (syncResultTimer.getWait() > MIN_WAIT_DURATION) {
-                        long wait=syncResultTimer.getWait();
-                        syncResultTimer.setWait(MIN_WAIT_DURATION);
-                        vertx.setTimer(wait, h -> {
-                            send(vertx, syncResultTimer, futureboolean);
-                        });
-                    }
+                    long wait=syncResultTimer1.getWait();
+                    syncResultTimer1.setWait(MIN_WAIT_DURATION);
+                    vertx.setTimer(wait, h -> {
+                        send(vertx, syncResultTimer1, futureboolean);
+                    } );
+
+
+                }
+                else
+                {
+                    logger.error("Error ",syncResultTimerAsyncResult.cause());
                 }
             });
             syncTestData(vertx, syncResultTimer,future);
@@ -108,13 +112,16 @@ public class NeoLoadHttpHandler {
                 future.setHandler(syncResultTimerAsyncResult -> {
                     if (syncResultTimerAsyncResult.succeeded()) {
                         SyncResultTimer syncResultTimer1 = syncResultTimerAsyncResult.result();
-                        if (syncResultTimer.getWait() > MIN_WAIT_DURATION) {
-                            long wait=syncResultTimer.getWait();
-                            syncResultTimer.setWait(MIN_WAIT_DURATION);
-                            vertx.setTimer(wait, h -> {
-                                send(vertx, syncResultTimer, futureboolean);
-                            });
-                        }
+                        long wait=syncResultTimer1.getWait();
+                        syncResultTimer1.setWait(MIN_WAIT_DURATION);
+                        vertx.setTimer(wait, h -> {
+                            send(vertx, syncResultTimer1, futureboolean);
+                        });
+
+                    }
+                    else
+                    {
+                        logger.error("Error ",syncResultTimerAsyncResult.cause());
                     }
                 });
                 syncValues(vertx,syncResultTimer,future);
@@ -232,7 +239,7 @@ public class NeoLoadHttpHandler {
                 //----for each element-----
                 try {
                     NeoLoadListOfElementPoints neoLoadListOfElementPoints=new NeoLoadListOfElementPoints();
-
+                    //#TODO get offset element -> check >0 && if ==-1 don't query it
                     resultsApi.getTestElementsPoints(testid, elementDefinition.getId(), ELEMENT_STATISTICS).forEach(point ->
                     {
                         //           logger.debug("Foudn te element points withe offset "+point.getFrom() +" with ref "+offset_elements.get());
@@ -254,6 +261,7 @@ public class NeoLoadHttpHandler {
                         //-----------------------
                         syncResultTimer.setOffsetFromElementid(elementDefinition.getId(),point.getFrom());
                     });
+                    //#TODO if test terminated -> alors set -1 pour l'élément
                     //  logger.debug("Number of element :" +String.valueOf(neoLoadListOfElementPoints.getNeoLoadElementsPoints().size()));
 
                     if(neoLoadListOfElementPoints.getNeoLoadElementsPoints().size()>0)
@@ -660,9 +668,7 @@ public class NeoLoadHttpHandler {
     {
         //#TODO Send values and points to the api every x s and remove from the list
         String test_status=null;
-        AtomicReference<Integer> offset_events= syncResultTimer.getOffset_events();
 
-        List<String> errorStrings=new ArrayList<>();
         try {
             logger.debug("Start to extrat data from " + testid);
 
@@ -671,11 +677,10 @@ public class NeoLoadHttpHandler {
             logger.debug("Test test has the current status " + test_status);
 
 
-            if (!test_status.equalsIgnoreCase(NEOLOAD_ENDSTATUS)) {
+            if (!test_status.equalsIgnoreCase(NEOLOAD_ENDSTATUS)) { ///#TODO and offset of element /monitorng = -1
 
                 logger.debug("Test test has the current status " + test_status);
                 testDefinition = resultsApi.getTest(testid);
-                test_status = testDefinition.getStatus().getValue();
                 TestDefinition finalTestDefinition2 = testDefinition;
                 logger.debug("parsing the test " + testDefinition.getName());
                 ELEMENT_LIST_CATEGORY.stream().forEach(category ->
