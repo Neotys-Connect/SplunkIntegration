@@ -22,7 +22,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 
 import static com.neotys.splunk.conf.Constants.*;
 
@@ -52,166 +51,125 @@ public class NeoLoadHttpHandler {
 
 
     public NeoLoadHttpHandler(String testid) throws NeoLoadException {
-        this.testid=testid;
-        logger=new NeoLoadLogger(this.getClass().getName());
+        this.testid = testid;
+        logger = new NeoLoadLogger(this.getClass().getName());
         logger.setTestid(testid);
         getEnvVariables();
 
 
         generateApiUrl();
 
-        apiClient=new ApiClient();
-        apiClient.setBasePath(HTTPS+neoload_API_Url.get());
+        apiClient = new ApiClient();
+
+        apiClient.setBasePath(HTTPS + neoload_API_Url.get());
         apiClient.setApiKey(neoload_API_key);
-        resultsApi=new ResultsApi(apiClient);
+        resultsApi = new ResultsApi(apiClient);
 
 
     }
 
 
-
-    public Future<Boolean> syncTestData( Vertx vertx)
-    {
-        //#TODO Send values and points to the api every x s and remove from the list
-        Future<Boolean> future_results= Future.future();
-        String test_status=null;
-        AtomicReference<Integer> offset_events= new AtomicReference<Integer>( 0);
-        AtomicReference<Long> offset_elements=new AtomicReference<Long>((long) 0);
-        AtomicReference<Long> offset_monitor=new AtomicReference<Long>((long) 0);
-
-        List<String> errorStrings=new ArrayList<>();
-        try {
-            logger.debug("Start to extrat data from "+ testid);
-
-            TestDefinition testDefinition = resultsApi.getTest(testid);
-            test_status=testDefinition.getStatus().getValue();
-            logger.debug("Test test has the current status "+ test_status);
+    public Future<Boolean> sync(Vertx vertx) {
+        Future<Boolean> future=Future.future();
 
 
-            while (!test_status.equalsIgnoreCase(NEOLOAD_ENDSTATUS))
-            {
+        SyncResultTimer syncResultTimer = new SyncResultTimer(MIN_WAIT_DURATION);
+        vertx.setTimer(2000, h -> {
+            send(vertx, syncResultTimer,future);
+        });
 
-                logger.debug("Test test has the current status "+ test_status);
-                testDefinition = resultsApi.getTest(testid);
-                test_status=testDefinition.getStatus().getValue();
-                TestDefinition finalTestDefinition2 = testDefinition;
-                logger.debug("parsing the test "+testDefinition.getName());
-                ELEMENT_LIST_CATEGORY.stream().parallel().forEach(category ->
+        return future;
+    }
+
+
+    private void send(final Vertx vertx, SyncResultTimer syncResultTimer, Future<Boolean> futureboolean) {
+
+        Future<SyncResultTimer> future= Future.future();
+        if(!syncResultTimer.getTest_status().equalsIgnoreCase(NEOLOAD_ENDSTATUS))
+        {
+            future.setHandler(syncResultTimerAsyncResult -> {
+                if (syncResultTimerAsyncResult.succeeded())
                 {
-                    try {
-                        logger.debug("Start element parsing for category "+category);
-                        resultsApi.getTestElements(testid, category).forEach(elementDefinition ->
-                        {
-                        //    logger.debug("looking at the element "+elementDefinition.getName());
-                            //----for each element-----
-                            try {
-                                NeoLoadListOfElementPoints neoLoadListOfElementPoints=new NeoLoadListOfElementPoints();
-
-                                resultsApi.getTestElementsPoints(testid, elementDefinition.getId(), ELEMENT_STATISTICS).forEach(point ->
-                                {
-                         //           logger.debug("Foudn te element points withe offset "+point.getFrom() +" with ref "+offset_elements.get());
-                                    //----store the points----
-                                    if(point.getFrom()>=offset_elements.get())
-                                    {
-                                    //    logger.debug("Storing the element point "+point.getFrom());
-                                        NeoLoadElementsPoints elementsPoints=new NeoLoadElementsPoints(finalTestDefinition2,elementDefinition,point);
-                                        try {
-
-                                            neoLoadListOfElementPoints.addPointst(elementsPoints);
-                                            //logger.debug(" point stored " + point.getFrom());
-                                        }
-                                        catch (Exception e )
-                                        {
-                                            logger.error(" Execption on "+ elementsPoints.toString(),e);
-                                        }
-                                    }
-                                    //-----------------------
-                                    offset_elements.set(point.getFrom());
-                                });
-                              //  logger.debug("Number of element :" +String.valueOf(neoLoadListOfElementPoints.getNeoLoadElementsPoints().size()));
-
-                                if(neoLoadListOfElementPoints.getNeoLoadElementsPoints().size()>0)
-                                {
-                                    try {
-
-                                    Metrics elementpointsMetrics = new Metrics(neoLoadListOfElementPoints,testid);
-                                    //----send the data
-                                    Httpclient httpclientmetric =new Httpclient(vertx,splunkHost.get(),splunkport.get(),SPLUNK_HTTP_COLLECTOR_METRIC_PATH, splunkAuthMETRICToken.get(),ssl,testid);
-
-                                    Future<JsonObject> jsonObjectFuture = Future.future();
-                                    jsonObjectFuture.setHandler(jsonObjectAsyncResult -> {
-                                        if (jsonObjectAsyncResult.succeeded()) {
-                                            logger.debug("Data Received : " + jsonObjectAsyncResult.result().toString());
-
-                                        } else {
-                                            logger.error("Issue to receive response", jsonObjectAsyncResult.cause());
-                                        }
-                                    });
-                                    httpclientmetric.sendJsonObject(elementpointsMetrics.toJsonArray(),jsonObjectFuture);
-                                    }
-                                    catch (Exception e)
-                                    {
-                                        logger.error("ERROR to send data ",e);
-                                    }
-                                }
-                                //----------------
-
-                            } catch (ApiException e) {
-                                if(e.getCode()==NL_API_LIMITE_CODE)
-                                {
-                                   getRetryFromHeader(e);
-                                }
-                                else {
-                                    logger.error("Error parsing the element for id " + elementDefinition.getId() + " with code " + e.getCode() + "with hearder" + e.getResponseHeaders().toString(), e);
-                                    errorStrings.add("Error parsing the element for id " + elementDefinition.getId() + " -" + e.getMessage());
-                                }
-                            }
-
+                    SyncResultTimer syncResultTimer1 = syncResultTimerAsyncResult.result();
+                    if (syncResultTimer.getWait() > MIN_WAIT_DURATION) {
+                        long wait=syncResultTimer.getWait();
+                        syncResultTimer.setWait(MIN_WAIT_DURATION);
+                        vertx.setTimer(wait, h -> {
+                            send(vertx, syncResultTimer, futureboolean);
                         });
-                    } catch (ApiException e) {
-                        if(e.getCode()==NL_API_LIMITE_CODE)
-                        {
-                            getRetryFromHeader(e);
-                        }
-                        else {
-                            logger.error("Error parseing results" + e.getCode() + " hearders" + e.getResponseHeaders().toString(), e);
-                            errorStrings.add("Error parseing results " + e.getMessage());
+                    }
+                }
+            });
+            syncTestData(vertx, syncResultTimer,future);
+        }
+        else
+        {
+            if(!syncResultTimer.isALLElementSynchronized()&&!syncResultTimer.isALLMonitoringSynchronized()) {
+                future.setHandler(syncResultTimerAsyncResult -> {
+                    if (syncResultTimerAsyncResult.succeeded()) {
+                        SyncResultTimer syncResultTimer1 = syncResultTimerAsyncResult.result();
+                        if (syncResultTimer.getWait() > MIN_WAIT_DURATION) {
+                            long wait=syncResultTimer.getWait();
+                            syncResultTimer.setWait(MIN_WAIT_DURATION);
+                            vertx.setTimer(wait, h -> {
+                                send(vertx, syncResultTimer, futureboolean);
+                            });
                         }
                     }
                 });
+                syncValues(vertx,syncResultTimer,future);
+            }
+            else
+            {
+                futureboolean.complete(true);
+            }
+            //---Values
+        }
 
-               try{
-                   NeoLoadListOfElementPoints neoLoadListOfElementPointsRequest=new NeoLoadListOfElementPoints();
+    }
 
-                   ElementDefinition elementDefinition=resultsApi.getTestElementDefinition(testid,ALL_REQUEST);
-                        resultsApi.getTestElementsPoints(testid, ALL_REQUEST, ELEMENT_STATISTICS).forEach(point ->
+    public void getMonitoringPoints(Vertx vertx, SyncResultTimer syncResultTimer,TestDefinition testDefinition) {
+        //----query the coutners$
+        NeoLoadMonitoringListOfPoints neoLoadMonitoringListOfPoints = new NeoLoadMonitoringListOfPoints();
+        try
+        {
+
+          ArrayOfCounterDefinition arrayOfCounterDefinition= resultsApi.getTestMonitors(testid);
+          for(int i=0;i<arrayOfCounterDefinition.size();i++)
+          {
+                CounterDefinition counterDefinition=arrayOfCounterDefinition.get(i);
+                //  logger.debug("parsing the counter "+counterDefinition.getName());
+
+                try {
+
+                    resultsApi.getTestMonitorsPoints(testid, counterDefinition.getId()).forEach(point ->
                         {
-                        //    logger.debug("Foudn te element points withe offset "+point.getFrom() +" with ref "+offset_elements.get());
-                            //----store the points----
-                            if(point.getFrom()>=offset_elements.get())
-                            {
-                                //logger.debug("Storing the element point "+point.getFrom());
-                                NeoLoadElementsPoints elementsPoints=new NeoLoadElementsPoints(finalTestDefinition2,elementDefinition,point);
+                            //       logger.debug("parsing the point with offset"+point.getFrom() +" the current offset reference is "+offset_monitor.get());
+
+                            //------store in the database------
+                            if (point.getFrom() >= syncResultTimer.getOffsetFromMonitoringid(counterDefinition.getId()).get()) {
+                                //     logger.debug("Storing the point with offset"+point.getFrom());
+                                NeoLoadMonitoringPoints monitoringPoints = new NeoLoadMonitoringPoints(testDefinition, counterDefinition, point);
                                 try {
-                                    neoLoadListOfElementPointsRequest.addPointst(elementsPoints);
-                                 //   logger.debug(" point stored " + point.getFrom());
-                                }
-                                catch (Exception e)
-                                {
-                                    logger.error(" null pointer execption on "+ elementsPoints.toString(),e);
+                                    neoLoadMonitoringListOfPoints.addPoints(monitoringPoints);
+                                    ///          logger.debug(" the point with offset stored"+point.getFrom());
+                                } catch (Exception e) {
+                                    logger.error(" null pointer execption on " + monitoringPoints.toString(), e);
                                 }
 
                             }
-                            //-----------------------
-                            offset_elements.set(point.getFrom());
+                            syncResultTimer.setOffsetFromMonitoringid(counterDefinition.getId(),point.getFrom());
+                            //-------------------------------
                         });
-              //     logger.debug("Number of element :" +String.valueOf(neoLoadListOfElementPointsRequest.getNeoLoadElementsPoints().size()));
+                    //    logger.debug("Number of element :" +String.valueOf(neoLoadMonitoringListOfPoints.getNeoLoadMonitoringPointsList().size()));
 
-                    if(neoLoadListOfElementPointsRequest.getNeoLoadElementsPoints().size()>0) {
+                    if (neoLoadMonitoringListOfPoints.getNeoLoadMonitoringPointsList().size() > 0) {
                         try {
-                            Metrics elementpointsMetrics = new Metrics(neoLoadListOfElementPointsRequest,testid);
-                            //----send the data
-                            Httpclient httpclientmetric =new Httpclient(vertx,splunkHost.get(),splunkport.get(),SPLUNK_HTTP_COLLECTOR_METRIC_PATH, splunkAuthMETRICToken.get(),ssl,testid);
+
+
+                            Metrics elementpointsmonitoringMetrics = new Metrics(neoLoadMonitoringListOfPoints, testid);
+                            //---send data
+                            Httpclient httpclientmetric = new Httpclient(vertx, splunkHost.get(), splunkport.get(), SPLUNK_HTTP_COLLECTOR_METRIC_PATH, splunkAuthMETRICToken.get(), ssl, testid);
                             Future<JsonObject> jsonObjectFuture = Future.future();
                             jsonObjectFuture.setHandler(jsonObjectAsyncResult -> {
                                 if (jsonObjectAsyncResult.succeeded()) {
@@ -221,91 +179,202 @@ public class NeoLoadHttpHandler {
                                     logger.error("Issue to receive response", jsonObjectAsyncResult.cause());
                                 }
                             });
-                            httpclientmetric.sendJsonObject(elementpointsMetrics.toJsonArray(), jsonObjectFuture);
+                            httpclientmetric.sendJsonObject(elementpointsmonitoringMetrics.toJsonArray(), jsonObjectFuture);
+
+                        } catch (Exception e) {
+                            logger.error("ERROR to send data ", e);
+                        }
+                    }
+                    //----------
+
+                } catch (ApiException e) {
+                    if (e.getCode() == NL_API_LIMITE_CODE) {
+                        syncResultTimer.setWait(getRetryFromHeader(e));
+                        syncResultTimer.setTest_status(testDefinition.getStatus().getValue());
+                        break;
+                    } else {
+                        logger.error("unable to qery the points of the counter : " + counterDefinition.getId() + " with code " + e.getCode() + "header " + e.getResponseHeaders().toString(), e);
+                    }
+                }
+            }
+
+            syncResultTimer.setTest_status(testDefinition.getStatus().getValue());
+        }
+
+        catch( ApiException e)
+        {
+            if (e.getCode() == NL_API_LIMITE_CODE) {
+                syncResultTimer.setWait(getRetryFromHeader(e));
+                syncResultTimer.setTest_status(testDefinition.getStatus().getValue());
+
+            } else {
+                logger.error("unable to qery counter  with code " + e.getCode(), e);
+                syncResultTimer.setTest_status(testDefinition.getStatus().getValue());
+
+            }
+        }
+    }
+
+
+
+
+
+
+    public void getSpecificElememntsPoints(Vertx vertx,String category,SyncResultTimer syncResultTimer,TestDefinition testDefinition)
+    {
+
+        try {
+            ArrayOfElementDefinition arrayOfElementDefinition=resultsApi.getTestElements(testid, category);
+            for(int i=0;i<arrayOfElementDefinition.size();i++)
+            {
+                ElementDefinition elementDefinition=arrayOfElementDefinition.get(i);
+                //    logger.debug("looking at the element "+elementDefinition.getName());
+                //----for each element-----
+                try {
+                    NeoLoadListOfElementPoints neoLoadListOfElementPoints=new NeoLoadListOfElementPoints();
+
+                    resultsApi.getTestElementsPoints(testid, elementDefinition.getId(), ELEMENT_STATISTICS).forEach(point ->
+                    {
+                        //           logger.debug("Foudn te element points withe offset "+point.getFrom() +" with ref "+offset_elements.get());
+                        //----store the points----
+                        if(point.getFrom()>=syncResultTimer.getOffsetFromElementid(elementDefinition.getId()).get())
+                        {
+                            //    logger.debug("Storing the element point "+point.getFrom());
+                            NeoLoadElementsPoints elementsPoints=new NeoLoadElementsPoints(testDefinition,elementDefinition,point);
+                            try {
+
+                                neoLoadListOfElementPoints.addPointst(elementsPoints);
+                                //logger.debug(" point stored " + point.getFrom());
+                            }
+                            catch (Exception e )
+                            {
+                                logger.error(" Execption on "+ elementsPoints.toString(),e);
+                            }
+                        }
+                        //-----------------------
+                        syncResultTimer.setOffsetFromElementid(elementDefinition.getId(),point.getFrom());
+                    });
+                    //  logger.debug("Number of element :" +String.valueOf(neoLoadListOfElementPoints.getNeoLoadElementsPoints().size()));
+
+                    if(neoLoadListOfElementPoints.getNeoLoadElementsPoints().size()>0)
+                    {
+                        try {
+
+                            Metrics elementpointsMetrics = new Metrics(neoLoadListOfElementPoints,testid);
+                            //----send the data
+                            Httpclient httpclientmetric =new Httpclient(vertx,splunkHost.get(),splunkport.get(),SPLUNK_HTTP_COLLECTOR_METRIC_PATH, splunkAuthMETRICToken.get(),ssl,testid);
+
+
+                            Future<JsonObject> jsonObjectFuture = Future.future();
+                            jsonObjectFuture.setHandler(jsonObjectAsyncResult -> {
+                                if (jsonObjectAsyncResult.succeeded()) {
+                                    logger.debug("Data Received : " + jsonObjectAsyncResult.result().toString());
+
+                                } else {
+                                    logger.error("Issue to receive response", jsonObjectAsyncResult.cause());
+                                }
+                            });
+                            httpclientmetric.sendJsonObject(elementpointsMetrics.toJsonArray(),jsonObjectFuture);
                         }
                         catch (Exception e)
                         {
                             logger.error("ERROR to send data ",e);
                         }
                     }
-                   //-----
+                    //----------------
 
-               } catch (ApiException e) {
-                        if(e.getCode()==NL_API_LIMITE_CODE)
-                        {
-                            getRetryFromHeader(e);
-                        }
-                        else {
-                            logger.error("Error parsing the element", e);
-                            errorStrings.add("Error parsing the element -" + e.getMessage());
-                        }
+                } catch (ApiException e) {
+                    if(e.getCode()==NL_API_LIMITE_CODE)
+                    {
+                        syncResultTimer.setWait(getRetryFromHeader(e));
+                        syncResultTimer.setTest_status(testDefinition.getStatus().getValue());
+
+                        break;
                     }
-               try{
+                    else {
+                        logger.error("Error parsing the element for id " + elementDefinition.getId() + " with code " + e.getCode() + "with hearder" + e.getResponseHeaders().toString(), e);
+                    }
+                }
 
-                //----query the coutners$
-                NeoLoadMonitoringListOfPoints neoLoadMonitoringListOfPoints=new NeoLoadMonitoringListOfPoints();
+            }
+            NeoLoadListOfElementPoints neoLoadListOfElementPointsRequest=new NeoLoadListOfElementPoints();
 
-                    resultsApi.getTestMonitors(testid).forEach(counterDefinition ->
+
+            ElementDefinition elementDefinition=resultsApi.getTestElementDefinition(testid,ALL_REQUEST);
+            resultsApi.getTestElementsPoints(testid, ALL_REQUEST, ELEMENT_STATISTICS).forEach(point ->
+            {
+                //    logger.debug("Foudn te element points withe offset "+point.getFrom() +" with ref "+offset_elements.get());
+                //----store the points----
+                if(point.getFrom()>=syncResultTimer.getOffsetFromElementid(ALL_REQUEST).get())
                 {
-                  //  logger.debug("parsing the counter "+counterDefinition.getName());
-
+                    //logger.debug("Storing the element point "+point.getFrom());
+                    NeoLoadElementsPoints elementsPoints=new NeoLoadElementsPoints(testDefinition,elementDefinition,point);
                     try {
+                        neoLoadListOfElementPointsRequest.addPointst(elementsPoints);
+                        //   logger.debug(" point stored " + point.getFrom());
+                    }
+                    catch (Exception e)
+                    {
+                        logger.error(" null pointer execption on "+ elementsPoints.toString(),e);
+                    }
 
-                        resultsApi.getTestMonitorsPoints(testid, counterDefinition.getId()).forEach(point ->
+                }
+                //-----------------------
+                syncResultTimer.setOffsetFromElementid(ALL_REQUEST,point.getFrom());
+            });
+            if(neoLoadListOfElementPointsRequest.getNeoLoadElementsPoints().size()>0) {
+                try {
+                    Metrics elementpointsMetrics = new Metrics(neoLoadListOfElementPointsRequest,testid);
+                    //----send the data
+                    Httpclient httpclientmetric =new Httpclient(vertx,splunkHost.get(),splunkport.get(),SPLUNK_HTTP_COLLECTOR_METRIC_PATH, splunkAuthMETRICToken.get(),ssl,testid);
+                    Future<JsonObject> jsonObjectFuture = Future.future();
+                    jsonObjectFuture.setHandler(jsonObjectAsyncResult -> {
+                        if (jsonObjectAsyncResult.succeeded()) {
+                            logger.debug("Data Received : " + jsonObjectAsyncResult.result().toString());
 
-                        {
-                     //       logger.debug("parsing the point with offset"+point.getFrom() +" the current offset reference is "+offset_monitor.get());
-
-                            //------store in the database------
-                            if(point.getFrom()>=offset_monitor.get())
-                            {
-                           //     logger.debug("Storing the point with offset"+point.getFrom());
-                                NeoLoadMonitoringPoints monitoringPoints=new NeoLoadMonitoringPoints(finalTestDefinition2,counterDefinition,point);
-                                try {
-                                    neoLoadMonitoringListOfPoints.addPoints(monitoringPoints);
-                          ///          logger.debug(" the point with offset stored"+point.getFrom());
-                                }
-                                catch (Exception  e)
-                                {
-                                    logger.error(" null pointer execption on "+ monitoringPoints.toString(),e);
-                                }
-
-                            }
-                            offset_monitor.set(point.getFrom());
-                            //-------------------------------
-                        });
-                    //    logger.debug("Number of element :" +String.valueOf(neoLoadMonitoringListOfPoints.getNeoLoadMonitoringPointsList().size()));
-
-                        if(neoLoadMonitoringListOfPoints.getNeoLoadMonitoringPointsList().size()>0)
-                        {
-                            try {
-
-
-                            Metrics elementpointsmonitoringMetrics=new Metrics(neoLoadMonitoringListOfPoints,testid);
-                            //---send data
-                            Httpclient httpclientmetric =new Httpclient(vertx,splunkHost.get(),splunkport.get(),SPLUNK_HTTP_COLLECTOR_METRIC_PATH, splunkAuthMETRICToken.get(),ssl,testid);
-                            Future<JsonObject> jsonObjectFuture = Future.future();
-                            jsonObjectFuture.setHandler(jsonObjectAsyncResult -> {
-                                if(jsonObjectAsyncResult.succeeded())
-                                {
-                                    logger.debug("Data Received : "+jsonObjectAsyncResult.result().toString());
-
-                                }
-                                else
-                                {
-                                    logger.error("Issue to receive response",jsonObjectAsyncResult.cause());
-                                }
-                            });
-                            httpclientmetric.sendJsonObject(elementpointsmonitoringMetrics.toJsonArray(), jsonObjectFuture);
-
-                            }
-                            catch (Exception e)
-                            {
-                                logger.error("ERROR to send data ",e);
-                            }
+                        } else {
+                            logger.error("Issue to receive response", jsonObjectAsyncResult.cause());
                         }
-                        //----------
+                    });
+                    httpclientmetric.sendJsonObject(elementpointsMetrics.toJsonArray(), jsonObjectFuture);
+                }
+                catch (Exception e)
+                {
+                    logger.error("ERROR to send data ",e);
+                }
+            }
+            //-----
 
+            syncResultTimer.setTest_status(testDefinition.getStatus().getValue());
+
+        } catch (ApiException e) {
+            syncResultTimer.setWait(getRetryFromHeader(e));
+            syncResultTimer.setTest_status(testDefinition.getStatus().getValue());
+
+        }
+
+    }
+
+
+    private void getEvents(Vertx vertx,SyncResultTimer syncResultTimer,TestDefinition testDefinition)
+    {
+        AtomicReference<Integer> offset_events= syncResultTimer.getOffset_events();
+        HashMap<String,String> elements=new HashMap<>();
+        TestDefinition finalTestDefinition = testDefinition;
+        try{
+            NeoLoadListEvents neoLoadListEvents=new NeoLoadListEvents();
+
+            resultsApi.getTestEvents(testid,null,200, offset_events.get(),"+offset_events").forEach(eventDefinition ->
+            {
+                // logger.debug("parsing the event  "+eventDefinition.getFullname());
+
+                String elementname=elements.get(eventDefinition.getElementid().toString());
+                if(elementname==null)
+                {
+                    try
+                    {
+                        elementname=resultsApi.getTestElementDefinition(testid,eventDefinition.getElementid().toString()).getName();
+                        elements.put(eventDefinition.getElementid().toString(),elementname);
                     }
                     catch (ApiException e)
                     {
@@ -314,171 +383,216 @@ public class NeoLoadHttpHandler {
                             getRetryFromHeader(e);
                         }
                         else {
-                            logger.error("unable to qery the points of the counter : " + counterDefinition.getId() + " with code " + e.getCode() + "header " + e.getResponseHeaders().toString(), e);
-                            errorStrings.add("unable to qery the points of the counter : " + counterDefinition.getId() + " - " + e.getMessage());
+                            logger.error("Unable to find the element " + eventDefinition.getElementid().toString());
+
                         }
                     }
-                });
+                    // logger.debug("parsing on the element   "+elementname);
+
                 }
-                catch (ApiException e)
+                //----store the event---------------
+                logger.debug("Storing the event  "+eventDefinition.getFullname());
+
+                NeoLoadEvents neoLoadEvents=new NeoLoadEvents(finalTestDefinition,eventDefinition,elementname);
+                try {
+                    neoLoadListEvents.addevent(neoLoadEvents);
+                }
+                catch (Exception  e)
                 {
-                    if(e.getCode()==NL_API_LIMITE_CODE)
-                    {
-                        getRetryFromHeader(e);
-                    }
-                    else {
-                        logger.error("unable to qery counter  with code " + e.getCode(), e);
-                        errorStrings.add("unable to qery counter " + e.getMessage());
-                    }
-
+                    logger.error(" null pointer execption on "+ neoLoadEvents.toString(),e);
                 }
+                increment(offset_events);
 
+                //----------------------------------
+            });
+            //     logger.debug("Number of element :" +String.valueOf(neoLoadListEvents.getNeoLoadEventsList().size()));
 
+            if(neoLoadListEvents.getNeoLoadEventsList().size()>0) {
+                try {
 
+                    Events splunkevent = new Events(neoLoadListEvents,testid);
+                    //---send the events
+                    //----send the data----
+                    Httpclient httpclientevent=new Httpclient(vertx,splunkHost.get(),splunkport.get(),SPLUNK_HTTP_COLLECTOR_METRIC_PATH,splunkAuthEVENTToken.get(),ssl,testid);
+                    Future<JsonObject> jsonObjectFuture = Future.future();
 
-                HashMap<String,String> elements=new HashMap<>();
-                TestDefinition finalTestDefinition = testDefinition;
-                try{
-                    NeoLoadListEvents neoLoadListEvents=new NeoLoadListEvents();
+                    jsonObjectFuture.setHandler(jsonObjectAsyncResult -> {
+                        if (jsonObjectAsyncResult.succeeded()) {
+                            logger.debug("Data Received : " + jsonObjectAsyncResult.result().toString());
 
-                    resultsApi.getTestEvents(testid,null,200, offset_events.get(),"+offset_events").forEach(eventDefinition ->
-                    {
-                       // logger.debug("parsing the event  "+eventDefinition.getFullname());
-
-                        String elementname=elements.get(eventDefinition.getElementid().toString());
-                        if(elementname==null)
-                        {
-                            try
-                            {
-                                elementname=resultsApi.getTestElementDefinition(testid,eventDefinition.getElementid().toString()).getName();
-                                elements.put(eventDefinition.getElementid().toString(),elementname);
-                            }
-                            catch (ApiException e)
-                            {
-                                if(e.getCode()==NL_API_LIMITE_CODE)
-                                {
-                                    getRetryFromHeader(e);
-                                }
-                                else {
-                                    logger.error("Unable to find the element " + eventDefinition.getElementid().toString());
-                                    errorStrings.add("unable to find the element  : " + eventDefinition.getId() + " - " + e.getMessage());
-
-                                }
-                            }
-                           // logger.debug("parsing on the element   "+elementname);
-
+                        } else {
+                            logger.error("Issue to receive response", jsonObjectAsyncResult.cause());
                         }
-                        //----store the event---------------
-                        logger.debug("Storing the event  "+eventDefinition.getFullname());
-
-                        NeoLoadEvents neoLoadEvents=new NeoLoadEvents(finalTestDefinition,eventDefinition,elementname);
-                        try {
-                            neoLoadListEvents.addevent(neoLoadEvents);
-                        }
-                        catch (Exception  e)
-                        {
-                            logger.error(" null pointer execption on "+ neoLoadEvents.toString(),e);
-                        }
-                        increment(offset_events);
-
-                        //----------------------------------
                     });
-               //     logger.debug("Number of element :" +String.valueOf(neoLoadListEvents.getNeoLoadEventsList().size()));
+                    httpclientevent.sendJsonObject(splunkevent.toJsonArray(), jsonObjectFuture);
 
-                    if(neoLoadListEvents.getNeoLoadEventsList().size()>0) {
-                        try {
-
-                            Events splunkevent = new Events(neoLoadListEvents,testid);
-                            //---send the events
-                            //----send the data----
-                            Httpclient httpclientevent=new Httpclient(vertx,splunkHost.get(),splunkport.get(),SPLUNK_HTTP_COLLECTOR_METRIC_PATH,splunkAuthEVENTToken.get(),ssl,testid);
-                            Future<JsonObject> jsonObjectFuture = Future.future();
-
-                            jsonObjectFuture.setHandler(jsonObjectAsyncResult -> {
-                                if (jsonObjectAsyncResult.succeeded()) {
-                                    logger.debug("Data Received : " + jsonObjectAsyncResult.result().toString());
-
-                                } else {
-                                    logger.error("Issue to receive response", jsonObjectAsyncResult.cause());
-                                }
-                            });
-                            httpclientevent.sendJsonObject(splunkevent.toJsonArray(), jsonObjectFuture);
-
-                        }
-                         catch (Exception e)
-                        {
-                            logger.error("ERROR to send data ",e);
-                        }
-                    }
-                    //-----------------
                 }
-                catch(ApiException e)
+                catch (Exception e)
                 {
-                    if(e.getCode()==NL_API_LIMITE_CODE)
-                    {
-                        getRetryFromHeader(e);
-                    }
-                    else {
-                        logger.error("Unable to get the evets " ,e);
-                        errorStrings.add("unable to get the evets  "+e.getMessage());
-
-                    }
+                    logger.error("ERROR to send data ",e);
                 }
             }
+            //-----------------
+            syncResultTimer.setOffset_events(offset_events);
+            syncResultTimer.setTest_status(testDefinition.getStatus().getValue());
 
-            if(test_status.equalsIgnoreCase(NEOLOAD_ENDSTATUS))
+        }
+        catch(ApiException e)
+        {
+            if(e.getCode()==NL_API_LIMITE_CODE)
             {
-                NeoLoadListOfElementsValues neoLoadListOfElementsValues=new NeoLoadListOfElementsValues();
+                syncResultTimer.setWait(getRetryFromHeader(e));
+                syncResultTimer.setOffset_events(offset_events);
+                syncResultTimer.setTest_status(testDefinition.getStatus().getValue());
 
-                Thread.sleep(500);
-                logger.debug("Test is finished "+testDefinition.getName());
+            }
+            else {
+                logger.error("Unable to get the evets " ,e);
+                syncResultTimer.setOffset_events(offset_events);
+                syncResultTimer.setTest_status(testDefinition.getStatus().getValue());
+
+            }
+        }
+
+    }
+
+    private void getMonitoringValuest(Vertx vertx,SyncResultTimer syncResultTimer)
+    {
+        NeoLoadMonitoringListOfValues neoLoadMonitoringListOfValues = new NeoLoadMonitoringListOfValues();
+        try {
+            TestDefinition testDefinition=resultsApi.getTest(testid);
+            if(testDefinition.getStatus().getValue().equalsIgnoreCase(NEOLOAD_ENDSTATUS)) {
+                ArrayOfCounterDefinition arrayOfCounterDefinition=resultsApi.getTestMonitors(testid);
+                for(int i=0;i<arrayOfCounterDefinition.size();i++)
+                {
+                    CounterDefinition counterDefinition=arrayOfCounterDefinition.get(i);
+                    if(!syncResultTimer.isMonitoringValuesSynchronized(counterDefinition.getId()))
+                    {
+
+                        try {
+                            logger.debug("parsing counter  " + counterDefinition.getName());
+                            CounterValues customMonitorValues = resultsApi.getTestMonitorsValues(testid, counterDefinition.getId());
+
+                            NeoLoadMonitoringValues neoLoadMonitoringValues = new NeoLoadMonitoringValues(testDefinition, counterDefinition, customMonitorValues);
+                            try {
+                                neoLoadMonitoringListOfValues.addValues(neoLoadMonitoringValues);
+                                syncResultTimer.monitoringValuesSynchronized(counterDefinition.getId());
+                            } catch (Exception e) {
+                                logger.debug(" null pointer execption on " + neoLoadMonitoringValues.toString());
+                            }
+                            //----store the monitoring value-------
+                        } catch (ApiException e) {
+                            if (e.getCode() == NL_API_LIMITE_CODE) {
+                                syncResultTimer.setWait(getRetryFromHeader(e));
+                                break;
+                            } else {
+                                logger.error("unable to find counter " + counterDefinition.getId());
+                            }
+                        }
+                    }
+                }
+                // logger.debug("Number of element :" +String.valueOf(neoLoadMonitoringListOfValues.getNeoLoadMonitoringValuesList().size()));
+
+                if (neoLoadMonitoringListOfValues.getNeoLoadMonitoringValuesList().size() > 0) {
+                    try {
+
+
+                        Metrics ElementValuesMonitoring = new Metrics(neoLoadMonitoringListOfValues, testid);
+
+                        //----send the data
+                        Httpclient httpclientmetric = new Httpclient(vertx, splunkHost.get(), splunkport.get(), SPLUNK_HTTP_COLLECTOR_METRIC_PATH, splunkAuthMETRICToken.get(), ssl, testid);
+                        Future<JsonObject> jsonObjectFuture = Future.future();
+
+                        jsonObjectFuture.setHandler(jsonObjectAsyncResult -> {
+                            if (jsonObjectAsyncResult.succeeded()) {
+                                logger.debug("Data Received : " + jsonObjectAsyncResult.result().toString());
+
+                            } else {
+                                logger.error("Issue to receive response", jsonObjectAsyncResult.cause());
+                            }
+                        });
+                        httpclientmetric.sendJsonObject(ElementValuesMonitoring.toJsonArray(), jsonObjectFuture);
+                    } catch (Exception e) {
+                        logger.error("ERROR to send data ", e);
+                    }
+                }
+                //-----
+
+            }
+        }
+        catch (ApiException e)
+        {
+            if (e.getCode() == NL_API_LIMITE_CODE) {
+                syncResultTimer.setWait(getRetryFromHeader(e));
+
+            } else {
+                logger.error("unable to find counter ",e);
+            }
+        }
+
+    }
+
+    private void getElementValues(Vertx vertx,SyncResultTimer syncResultTimer)
+    {
+        try {
+            TestDefinition testDefinition=resultsApi.getTest(testid);
+            String test_status=testDefinition.getStatus().getValue();
+
+            if (test_status.equalsIgnoreCase(NEOLOAD_ENDSTATUS))
+            {
+                NeoLoadListOfElementsValues neoLoadListOfElementsValues = new NeoLoadListOfElementsValues();
+
+
+                logger.debug("Test is finished " + testDefinition.getName());
 
                 //---get the values-----
                 TestDefinition finalTestDefinition1 = testDefinition;
-                ELEMENT_LIST_CATEGORY.stream().parallel().forEach(category ->
+                ELEMENT_LIST_CATEGORY.stream().forEach(category ->
                 {
                     try {
-                        resultsApi.getTestElements(testid, category).forEach(elementDefinition ->
+                        ArrayOfElementDefinition arrayOfElementDefinition=resultsApi.getTestElements(testid, category);
+                        for(int i =0;i<arrayOfElementDefinition.size();i++)
                         {
-                            logger.debug("parsin element "+elementDefinition.getName());
+                            ElementDefinition elementDefinition=arrayOfElementDefinition.get(i);
+                            logger.debug("parsin element " + elementDefinition.getName());
+                            if(!syncResultTimer.isElementValuesSynchronized(elementDefinition.getId()))
+                            {
 
-                            //----for each element-----
-                            try {
-                                ElementValues values=resultsApi.getTestElementsValues(testid, elementDefinition.getId());
-                                //----store the element value--
-                            //    logger.debug("Storing value of  element "+elementDefinition.getName());
+                                //----for each element-----
+                                try {
+                                    ElementValues values = resultsApi.getTestElementsValues(testid, elementDefinition.getId());
+                                    //----store the element value--
+                                    //    logger.debug("Storing value of  element "+elementDefinition.getName());
+                                    NeoLoadElementsValues neoLoadElementsValues = new NeoLoadElementsValues(finalTestDefinition1, elementDefinition, values);
+                                    try {
+                                        neoLoadListOfElementsValues.addValue(neoLoadElementsValues);
+                                        syncResultTimer.elementValuesSynchronized(elementDefinition.getId());
 
-                                NeoLoadElementsValues neoLoadElementsValues=new NeoLoadElementsValues(finalTestDefinition1,elementDefinition,values);
-                                try{
-                                neoLoadListOfElementsValues.addValue(neoLoadElementsValues);
-                                }
-                                catch (Exception  e)
-                                {
-                                    logger.debug(" null pointer execption on "+ neoLoadElementsValues.toString());
-                                }
+                                    } catch (Exception e) {
+                                        logger.debug(" null pointer execption on " + neoLoadElementsValues.toString());
+                                    }
 
 
-                                //-----------------------------
-                            } catch (ApiException e) {
-                                if(e.getCode()==NL_API_LIMITE_CODE)
-                                {
-                                    getRetryFromHeader(e);
-                                }
-                                else {
-                                    logger.error("Error parsing the element values for id " + elementDefinition.getId(), e);
-                                    errorStrings.add("unable to find the element  : " + elementDefinition.getId() + " - " + e.getMessage());
+                                    //-----------------------------
+                                } catch (ApiException e) {
+                                    if (e.getCode() == NL_API_LIMITE_CODE) {
+                                        syncResultTimer.setWait(getRetryFromHeader(e));
+                                    } else {
+                                        logger.error("Error parsing the element values for id " + elementDefinition.getId(), e);
+                                    }
                                 }
                             }
-                        });
-                     //   logger.debug("Number of element :" +String.valueOf(neoLoadListOfElementsValues.getNeoLoadListOfElementsValuesList().size()));
-                        if(neoLoadListOfElementsValues.getNeoLoadListOfElementsValuesList().size()>0) {
+                        }
+
+                        //   logger.debug("Number of element :" +String.valueOf(neoLoadListOfElementsValues.getNeoLoadListOfElementsValuesList().size()));
+                        if (neoLoadListOfElementsValues.getNeoLoadListOfElementsValuesList().size() > 0) {
                             try {
 
 
-                                Metrics ElementValuesTRansaction = new Metrics(neoLoadListOfElementsValues,testid);
+                                Metrics ElementValuesTRansaction = new Metrics(neoLoadListOfElementsValues, testid);
 
                                 //----send the data----
-                                Httpclient httpclientmetric =new Httpclient(vertx,splunkHost.get(),splunkport.get(),SPLUNK_HTTP_COLLECTOR_METRIC_PATH, splunkAuthMETRICToken.get(),ssl,testid);
+                                Httpclient httpclientmetric = new Httpclient(vertx, splunkHost.get(), splunkport.get(), SPLUNK_HTTP_COLLECTOR_METRIC_PATH, splunkAuthMETRICToken.get(), ssl, testid);
                                 Future<JsonObject> jsonObjectFuture = Future.future();
 
                                 jsonObjectFuture.setHandler(jsonObjectAsyncResult -> {
@@ -491,124 +605,122 @@ public class NeoLoadHttpHandler {
                                 });
                                 httpclientmetric.sendJsonObject(ElementValuesTRansaction.toJsonArray(), jsonObjectFuture);
 
-                            }
-                            catch (Exception e)
-                            {
-                                logger.error("ERROR to send data ",e);
+                            } catch (Exception e) {
+                                logger.error("ERROR to send data ", e);
                             }
                         }
 
                     } catch (ApiException e) {
-                        if(e.getCode()==NL_API_LIMITE_CODE)
-                        {
-                            getRetryFromHeader(e);
-                        }
-                        else {
+                        if (e.getCode() == NL_API_LIMITE_CODE) {
+                            syncResultTimer.setWait(getRetryFromHeader(e));
+                        } else {
                             logger.error("Errror parseing results", e);
-                            errorStrings.add("unable to parse results   - " + e.getMessage());
                         }
 
                     }
                 });
 
-                NeoLoadMonitoringListOfValues neoLoadMonitoringListOfValues=new NeoLoadMonitoringListOfValues();
-                resultsApi.getTestMonitors(testid).forEach(counterDefinition -> {
-                    try {
-                        logger.debug("parsing counter  "+counterDefinition.getName());
-
-                        CounterValues customMonitorValues=resultsApi.getTestMonitorsValues(testid, counterDefinition.getId());
-                        NeoLoadMonitoringValues neoLoadMonitoringValues=new NeoLoadMonitoringValues(finalTestDefinition1,counterDefinition,customMonitorValues);
-                        try {
-                            neoLoadMonitoringListOfValues.addValues(neoLoadMonitoringValues);
-                        }
-                        catch (Exception  e)
-                        {
-                            logger.debug(" null pointer execption on "+ neoLoadMonitoringValues.toString());
-                        }
-                        //----store the monitoring value-------
-                    }
-                    catch (ApiException e)
-                    {
-                        if(e.getCode()==NL_API_LIMITE_CODE)
-                        {
-                            getRetryFromHeader(e);
-                        }
-                        else {
-                            logger.error("unable to find counter " + counterDefinition.getId());
-                            errorStrings.add("unable to find the counter  : " + counterDefinition.getId() + " - " + e.getMessage());
-                        }
-                    }
-                });
-               // logger.debug("Number of element :" +String.valueOf(neoLoadMonitoringListOfValues.getNeoLoadMonitoringValuesList().size()));
-
-                if(neoLoadMonitoringListOfValues.getNeoLoadMonitoringValuesList().size()>0) {
-                    try {
-
-
-                        Metrics ElementValuesMonitoring = new Metrics(neoLoadMonitoringListOfValues,testid);
-
-                        //----send the data
-                        Httpclient httpclientmetric =new Httpclient(vertx,splunkHost.get(),splunkport.get(),SPLUNK_HTTP_COLLECTOR_METRIC_PATH, splunkAuthMETRICToken.get(),ssl,testid);
-                        Future<JsonObject> jsonObjectFuture = Future.future();
-
-                        jsonObjectFuture.setHandler(jsonObjectAsyncResult -> {
-                            if (jsonObjectAsyncResult.succeeded()) {
-                                logger.debug("Data Received : " + jsonObjectAsyncResult.result().toString());
-
-                            } else {
-                                logger.error("Issue to receive response", jsonObjectAsyncResult.cause());
-                            }
-                        });
-                        httpclientmetric.sendJsonObject(ElementValuesMonitoring.toJsonArray(), jsonObjectFuture);
-                    }
-                    catch (Exception e)
-                    {
-                        logger.error("ERROR to send data ",e);
-                    }
-                }
-                //-----
-
-
 
 
             }
-            if(errorStrings.size()>0)
-            {
-                future_results.fail(errorStrings.stream().collect(Collectors.joining(",")));
-                logger.error(errorStrings.stream().collect(Collectors.joining(",")));
-            }
-            else
-            {
-                future_results.complete(true);
-            }
-
         }
         catch (ApiException e)
         {
-            logger.error("Error during syncTestdata",e);
+            if (e.getCode() == NL_API_LIMITE_CODE) {
+            syncResultTimer.setWait(getRetryFromHeader(e));
+            } else {
+            logger.error("Errror parseing results", e);
+            }
 
-            future_results.fail(e);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-
-            future_results.fail(e);
         }
-        return future_results;
+
+
     }
 
-    private void getRetryFromHeader(ApiException e)
+    private void syncValues(Vertx vertx, SyncResultTimer syncResultTimer,Future<SyncResultTimer> future)
+    {
+
+
+        if(!syncResultTimer.isALLElementSynchronized()) {
+            getElementValues(vertx, syncResultTimer);
+            if (syncResultTimer.getWait() > MIN_WAIT_DURATION)
+                future.complete(syncResultTimer);
+        }
+        if(!syncResultTimer.isALLMonitoringSynchronized()) {
+            getMonitoringValuest(vertx, syncResultTimer);
+            if (syncResultTimer.getWait() > MIN_WAIT_DURATION)
+                future.complete(syncResultTimer);
+        }
+
+        future.complete(syncResultTimer);
+
+    }
+
+    private void syncTestData( Vertx vertx,SyncResultTimer syncResultTimer,Future<SyncResultTimer> future_results)
+    {
+        //#TODO Send values and points to the api every x s and remove from the list
+        String test_status=null;
+        AtomicReference<Integer> offset_events= syncResultTimer.getOffset_events();
+
+        List<String> errorStrings=new ArrayList<>();
+        try {
+            logger.debug("Start to extrat data from " + testid);
+
+            TestDefinition testDefinition = resultsApi.getTest(testid);
+            test_status = testDefinition.getStatus().getValue();
+            logger.debug("Test test has the current status " + test_status);
+
+
+            if (!test_status.equalsIgnoreCase(NEOLOAD_ENDSTATUS)) {
+
+                logger.debug("Test test has the current status " + test_status);
+                testDefinition = resultsApi.getTest(testid);
+                test_status = testDefinition.getStatus().getValue();
+                TestDefinition finalTestDefinition2 = testDefinition;
+                logger.debug("parsing the test " + testDefinition.getName());
+                ELEMENT_LIST_CATEGORY.stream().forEach(category ->
+                {
+                    logger.debug("Start element parsing for category " + category);
+                    getSpecificElememntsPoints(vertx, category, syncResultTimer, finalTestDefinition2);
+
+
+                });
+                if (syncResultTimer.getWait() > MIN_WAIT_DURATION)
+                    future_results.complete(syncResultTimer);
+
+
+                getMonitoringPoints(vertx, syncResultTimer, testDefinition);
+                if (syncResultTimer.getWait() > MIN_WAIT_DURATION)
+                    future_results.complete(syncResultTimer);
+
+                getEvents(vertx, syncResultTimer, testDefinition);
+                if (syncResultTimer.getWait() > MIN_WAIT_DURATION)
+                    future_results.complete(syncResultTimer);
+
+                future_results.complete(syncResultTimer);
+
+            }
+        }
+        catch (Exception e)
+        {
+            logger.error("Technical Error ",e);
+            future_results.fail(e);
+        }
+
+    }
+
+    private int getRetryFromHeader(ApiException e)
     {
         if(e.getResponseHeaders().containsKey(RETRY_AFTER))
         {
             List<String> retry=e.getResponseHeaders().get(RETRY_AFTER);
             int wait=Integer.parseInt(retry.get(0));
             logger.info("Requires to wait "+wait +" ms");
-            try {
-                Thread.sleep(wait);
-            } catch (InterruptedException e1) {
-                e1.printStackTrace();
-            }
+           return wait;
+
         }
+        else
+            return 0;
     }
     private void increment(AtomicReference<Integer> counter) {
         while(true) {

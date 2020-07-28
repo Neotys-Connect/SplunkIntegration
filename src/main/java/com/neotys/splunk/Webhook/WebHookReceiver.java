@@ -65,7 +65,7 @@ public class WebHookReceiver  extends AbstractVerticle {
                 loadLogger.debug("Received Webhook with testid  " + testid);
                 try {
                     NeoLoadHttpHandler httpHandler = new NeoLoadHttpHandler(testid);
-                    Future<Boolean> booleanFuture = httpHandler.syncTestData(vertx);
+                    Future<Boolean> booleanFuture = httpHandler.sync(vertx);
                     booleanFuture.setHandler(booleanAsyncResult -> {
                         if (booleanAsyncResult.succeeded()) {
                             testidlist.remove(testid);

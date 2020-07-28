@@ -27,6 +27,7 @@ public class Constants {
     public static final String SECRET_SPLUNK_AUTHEVENT_TOKEN="SPLUNK_HEC_EVENT_TOKEN";
     public static final String DEFAULT_SPLUNK_PORT="8888";
 
+    public static long MIN_WAIT_DURATION=2000;
     public static final String SOURCE_NEOLOAD="NEOLOAD";
 
     public static final String PATH="path";
