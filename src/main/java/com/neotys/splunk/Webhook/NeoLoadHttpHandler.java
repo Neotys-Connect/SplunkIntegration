@@ -87,6 +87,7 @@ public class NeoLoadHttpHandler {
         Future<SyncResultTimer> future= Future.future();
         if(!syncResultTimer.getTest_status().equalsIgnoreCase(NEOLOAD_ENDSTATUS))
         {
+            logger.info("Runnning for points and events - status "+syncResultTimer.getTest_status());
             future.setHandler(syncResultTimerAsyncResult -> {
                 if (syncResultTimerAsyncResult.succeeded())
                 {
@@ -108,6 +109,7 @@ public class NeoLoadHttpHandler {
         }
         else
         {
+            logger.info("Runnning Values");
             if(!syncResultTimer.isALLElementSynchronized()&&!syncResultTimer.isALLMonitoringSynchronized()) {
                 future.setHandler(syncResultTimerAsyncResult -> {
                     if (syncResultTimerAsyncResult.succeeded()) {
@@ -154,7 +156,7 @@ public class NeoLoadHttpHandler {
                             //       logger.debug("parsing the point with offset"+point.getFrom() +" the current offset reference is "+offset_monitor.get());
 
                             //------store in the database------
-                            if (point.getFrom() >= syncResultTimer.getOffsetFromMonitoringid(counterDefinition.getId()).get()) {
+                            if (point.getFrom() > syncResultTimer.getOffsetFromMonitoringid(counterDefinition.getId()).get()||syncResultTimer.getOffsetFromElementid(counterDefinition.getId()).get()==0) {
                                 //     logger.debug("Storing the point with offset"+point.getFrom());
                                 NeoLoadMonitoringPoints monitoringPoints = new NeoLoadMonitoringPoints(testDefinition, counterDefinition, point);
                                 try {
@@ -204,7 +206,6 @@ public class NeoLoadHttpHandler {
                     }
                 }
             }
-
             syncResultTimer.setTest_status(testDefinition.getStatus().getValue());
         }
 
@@ -231,6 +232,7 @@ public class NeoLoadHttpHandler {
     {
 
         try {
+
             ArrayOfElementDefinition arrayOfElementDefinition=resultsApi.getTestElements(testid, category);
             for(int i=0;i<arrayOfElementDefinition.size();i++)
             {
@@ -244,7 +246,7 @@ public class NeoLoadHttpHandler {
                     {
                         //           logger.debug("Foudn te element points withe offset "+point.getFrom() +" with ref "+offset_elements.get());
                         //----store the points----
-                        if(point.getFrom()>=syncResultTimer.getOffsetFromElementid(elementDefinition.getId()).get())
+                        if(point.getFrom()>syncResultTimer.getOffsetFromElementid(elementDefinition.getId()).get()||syncResultTimer.getOffsetFromElementid(elementDefinition.getId()).get()==0)
                         {
                             //    logger.debug("Storing the element point "+point.getFrom());
                             NeoLoadElementsPoints elementsPoints=new NeoLoadElementsPoints(testDefinition,elementDefinition,point);
@@ -290,6 +292,7 @@ public class NeoLoadHttpHandler {
                         }
                     }
                     //----------------
+
 
                 } catch (ApiException e) {
                     if(e.getCode()==NL_API_LIMITE_CODE)
@@ -414,7 +417,7 @@ public class NeoLoadHttpHandler {
                 //----------------------------------
             });
             //     logger.debug("Number of element :" +String.valueOf(neoLoadListEvents.getNeoLoadEventsList().size()));
-
+            syncResultTimer.setTest_status(testDefinition.getStatus().getValue());
             if(neoLoadListEvents.getNeoLoadEventsList().size()>0) {
                 try {
 
@@ -666,7 +669,7 @@ public class NeoLoadHttpHandler {
 
     private void syncTestData( Vertx vertx,SyncResultTimer syncResultTimer,Future<SyncResultTimer> future_results)
     {
-        //#TODO Send values and points to the api every x s and remove from the list
+
         String test_status=null;
 
         try {
@@ -674,8 +677,8 @@ public class NeoLoadHttpHandler {
 
             TestDefinition testDefinition = resultsApi.getTest(testid);
             test_status = testDefinition.getStatus().getValue();
-            logger.debug("Test test has the current status " + test_status);
-
+            logger.info("Test test has the current status " + test_status);
+            syncResultTimer.setTest_status(testDefinition.getStatus().getValue());
 
             if (!test_status.equalsIgnoreCase(NEOLOAD_ENDSTATUS)) { ///#TODO and offset of element /monitorng = -1
 
@@ -683,6 +686,8 @@ public class NeoLoadHttpHandler {
                 testDefinition = resultsApi.getTest(testid);
                 TestDefinition finalTestDefinition2 = testDefinition;
                 logger.debug("parsing the test " + testDefinition.getName());
+
+
                 ELEMENT_LIST_CATEGORY.stream().forEach(category ->
                 {
                     logger.debug("Start element parsing for category " + category);
@@ -705,6 +710,8 @@ public class NeoLoadHttpHandler {
                 future_results.complete(syncResultTimer);
 
             }
+            else
+                future_results.complete(syncResultTimer);
         }
         catch (Exception e)
         {

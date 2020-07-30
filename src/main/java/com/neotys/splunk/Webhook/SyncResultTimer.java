@@ -38,6 +38,8 @@ public class SyncResultTimer {
         }
     }
 
+
+
     public void setOffsetFromElementid(String elementid,Long atomicReference)
     {
           offset_elements.put(elementid,new AtomicReference<Long>(atomicReference));
