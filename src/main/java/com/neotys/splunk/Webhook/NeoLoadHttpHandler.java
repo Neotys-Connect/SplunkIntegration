@@ -508,7 +508,7 @@ public class NeoLoadHttpHandler {
                     try {
 
 
-                        Metrics ElementValuesMonitoring = new Metrics(neoLoadMonitoringListOfValues, testid);
+                        Metrics elementValuesMonitoring = new Metrics(neoLoadMonitoringListOfValues, testid);
 
                         //----send the data
                         Httpclient httpclientmetric = new Httpclient(vertx, splunkHost.get(), splunkport.get(), SPLUNK_HTTP_COLLECTOR_METRIC_PATH, splunkAuthMETRICToken.get(), ssl, testid);
@@ -522,7 +522,9 @@ public class NeoLoadHttpHandler {
                                 logger.error("Issue to receive response", jsonObjectAsyncResult.cause());
                             }
                         });
-                        httpclientmetric.sendJsonObject(ElementValuesMonitoring.toJsonArray(), jsonObjectFuture);
+                        logger.info("Values sent "+ elementValuesMonitoring.toJsonArray() );
+
+                        httpclientmetric.sendJsonObject(elementValuesMonitoring.toJsonArray(), jsonObjectFuture);
                     } catch (Exception e) {
                         logger.error("ERROR to send data ", e);
                     }
@@ -600,7 +602,7 @@ public class NeoLoadHttpHandler {
                             try {
 
 
-                                Metrics ElementValuesTRansaction = new Metrics(neoLoadListOfElementsValues, testid);
+                                Metrics elementValuesTRansaction = new Metrics(neoLoadListOfElementsValues, testid);
 
                                 //----send the data----
                                 Httpclient httpclientmetric = new Httpclient(vertx, splunkHost.get(), splunkport.get(), SPLUNK_HTTP_COLLECTOR_METRIC_PATH, splunkAuthMETRICToken.get(), ssl, testid);
@@ -614,7 +616,8 @@ public class NeoLoadHttpHandler {
                                         logger.error("Issue to receive response", jsonObjectAsyncResult.cause());
                                     }
                                 });
-                                httpclientmetric.sendJsonObject(ElementValuesTRansaction.toJsonArray(), jsonObjectFuture);
+                                logger.info("Values sent "+ elementValuesTRansaction.toJsonArray() );
+                                httpclientmetric.sendJsonObject(elementValuesTRansaction.toJsonArray(), jsonObjectFuture);
 
                             } catch (Exception e) {
                                 logger.error("ERROR to send data ", e);

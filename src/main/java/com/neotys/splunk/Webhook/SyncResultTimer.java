@@ -67,20 +67,27 @@ public class SyncResultTimer {
 
     public Boolean isALLElementSynchronized()
     {
-
-        if(syncElementValues.containsValue(false))
-            return false;
+        if(syncElementValues.size()>0) {
+            if (syncElementValues.containsValue(false))
+                return false;
+            else
+                return true;
+        }
         else
-            return true;
+            return false;
     }
 
     public Boolean isALLMonitoringSynchronized()
     {
 
-        if(syncMonitoringValues.containsValue(false))
-            return false;
+        if(syncMonitoringValues.size()>0) {
+            if (syncMonitoringValues.containsValue(false))
+                return false;
+            else
+                return true;
+        }
         else
-            return true;
+            return false;
     }
 
     public Boolean isElementValuesSynchronized(String elementID) {

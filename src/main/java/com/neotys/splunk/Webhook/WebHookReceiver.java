@@ -62,13 +62,14 @@ public class WebHookReceiver  extends AbstractVerticle {
             {
                 testidlist.add(testid);
                 loadLogger.setTestid(testid);
-                loadLogger.debug("Received Webhook with testid  " + testid);
+                loadLogger.info("Received Webhook with testid  " + testid);
                 try {
                     NeoLoadHttpHandler httpHandler = new NeoLoadHttpHandler(testid);
                     Future<Boolean> booleanFuture = httpHandler.sync(vertx);
                     booleanFuture.setHandler(booleanAsyncResult -> {
                         if (booleanAsyncResult.succeeded()) {
                             testidlist.remove(testid);
+                            loadLogger.info("Test "+testid +" sent properly to splunk");
                             routingContext.response().setStatusCode(200)
                                     .end("Results sent to Splunk");
                         } else {
