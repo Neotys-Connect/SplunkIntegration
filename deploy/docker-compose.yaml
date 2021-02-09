@@ -3,7 +3,7 @@ version: '2'
 services:
   NeoLoad-SplunkSync:
     container_name: WebHookHandler
-    image: hrexed/neoload_splunksync:latest
+    image: neotyspartnersolution/neoload_splunksync:latest
     ports:
     - "8080:8080"
     environment:

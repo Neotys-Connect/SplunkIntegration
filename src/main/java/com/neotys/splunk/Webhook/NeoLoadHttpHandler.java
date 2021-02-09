@@ -522,7 +522,6 @@ public class NeoLoadHttpHandler {
                                 logger.error("Issue to receive response", jsonObjectAsyncResult.cause());
                             }
                         });
-                        logger.info("Values sent "+ elementValuesMonitoring.toJsonArray() );
 
                         httpclientmetric.sendJsonObject(elementValuesMonitoring.toJsonArray(), jsonObjectFuture);
                     } catch (Exception e) {
@@ -616,7 +615,6 @@ public class NeoLoadHttpHandler {
                                         logger.error("Issue to receive response", jsonObjectAsyncResult.cause());
                                     }
                                 });
-                                logger.info("Values sent "+ elementValuesTRansaction.toJsonArray() );
                                 httpclientmetric.sendJsonObject(elementValuesTRansaction.toJsonArray(), jsonObjectFuture);
 
                             } catch (Exception e) {

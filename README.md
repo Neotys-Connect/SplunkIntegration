@@ -61,7 +61,7 @@ Copy the token value that Splunk Web displays and paste it into another document
 
 #### Step 6: Deploy the webHookHandler
 
-The webhook handler is a web service package in a container : `hrexed/neoload_splunksync`
+The webhook handler is a web service package in a container : `neotyspartnersolution/neoload_splunksync`
 The container will required different to define ther right environement variables
 
 ####  Docker environement variables 
