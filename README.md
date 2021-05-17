@@ -1,5 +1,5 @@
 # NeoLoad Splunk Synchroniser
-<p align="center"><img src="/screenshots/splunk-logo.jpg" width="40%" alt="SuperMon Logo" /></p>
+<p align="center"><img src="/screenshots/splunk-logo.jpg" width="40%" alt="Splunk Logo" /></p>
 
 This project will stream out all data of a neoload web test to Splunk
 This project has one container :
@@ -119,4 +119,4 @@ To configure the webhook in NeoLoad WEB you will need to :
             "testid": "$(test_result_id)"
 }
 ```
-<p align="center"><img src="/screenshots/webhook.png" alt="InfluxDB webhok" /></p>
+<p align="center"><img src="/screenshots/webhook.png" alt="InfluxDB webhook" /></p>
