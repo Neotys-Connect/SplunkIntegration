@@ -9,11 +9,11 @@
     <version>1.0-SNAPSHOT</version>
     <properties>
         <java.version>1.8</java.version>
-        <tag>0.1</tag>
+        <tag>0.2</tag>
         <dockerimage>docker.io/neotyspartnersolution/neoload_splunksync</dockerimage>
-        <NL_WEB_HOST>neoload.saas.com</NL_WEB_HOST>
-        <NL_API_HOST>neoload-api.saas.com</NL_API_HOST>
-        <NL_API_TOKEN>YOUTOKEN</NL_API_TOKEN>
+        <NL_WEB_HOST>neoload.saas.neotys.com</NL_WEB_HOST>
+        <NL_API_HOST>neoload-api.saas.neotys.com</NL_API_HOST>
+        <NL_API_TOKEN>YOUR_TOKEN</NL_API_TOKEN>
         <port>8080</port>
         <SplunkHost>localhost</SplunkHost>
         <Splunkport>9800</Splunkport>
@@ -53,7 +53,7 @@
         <dependency>
             <groupId>com.neotys.ascode</groupId>
             <artifactId>swagger-java-client</artifactId>
-            <version>1.0.11</version>
+            <version>1.0.20</version>
         </dependency>
     </dependencies>
     <build>
