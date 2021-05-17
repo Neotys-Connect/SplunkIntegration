@@ -10,6 +10,7 @@ services:
     - NL_WEB_HOST= neoload.saas.neotys.com
     - NL_API_TOKEN= TOKEN_TOBE_REPLACE
     - NL_API_HOST=neoload-api.saas.neotys.com
+    - NEOLOAD_SSL=true
     - PORT=8080
     - logging-level=DEBUG
     - SPLUNK_HOST= SPLUNKHOST_TOBE_REPLACE
