@@ -16,7 +16,7 @@ public class Constants {
     public static final String SECRET_NL_WEB_HOST="NL_WEB_HOST";
     public static final String SECRET_SSL="SPLUNK_HEC_SSL";
     public static final String SECRET_NL_API_HOST="NL_API_HOST";
-    public static final String NEOLOAD_SSL="NEOLOAD_SSL";
+    public static final String NEOLOAD_SSL="NL_WEB_SSL";
     public static final String SECRET_PORT="PORT";
     public static final String VALUES = "Values.";
     public static String LOGING_LEVEL_KEY="logging-level";

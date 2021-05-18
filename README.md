@@ -69,7 +69,7 @@ To be able to import NeoLoad test results you will need to specify :
 * `NL_WEB_HOST`: Hostname of the webui of NeoLoad WEB
 * `NL_API_HOST` : Hostname of the rest-api of NeoLoad WEB
 * `NL_API_TOKEN` : API token of NeoLoad WEB ( [how to generate an API token](https://www.neotys.com/documents/doc/nlweb/latest/en/html/#24270.htm))
-* `NEOLOAD_SSL` : true for NeoLoad WEB SaaS. true or false if you NeoLoad Web on-premise requires SSL
+* `NL_WEB_SSL` : true for NeoLoad WEB SaaS. true or false if you NeoLoad Web on-premise requires SSL
 * `PORT`  : Port that the service will listen to
 * `logging-level` : Logging level of the service ( DEBUG, INFO, ERROR)
 * `SPLUNK_HOST` : InfluxDB database that will receive all the NeoLoad measurements
